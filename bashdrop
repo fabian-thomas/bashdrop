@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# bashdrop
+#
+# Copy bashdrop-server.py to a remote server and run it there.
+#
+# Usage:
+#   bashdrop <ssh-target> <public-domain-or-ip> [-p port] [filename] [password]
+
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+  echo "Usage: $0 <ssh-target> <public-domain-or-ip> [-p port] [filename] [password]" >&2
+  exit 2
+fi
+
+SSH_TARGET="$1"
+DOMAIN="$2"
+shift 2
+
+PORT_OPT=""
+if [ "${1:-}" = "-p" ]; then
+  PORT_OPT="-p $2"
+  shift 2
+fi
+
+BASENAME="${1:-}"
+PASSWORD="${2:-}"
+
+REMOTE_SCRIPT="/tmp/bashdrop-server.py"
+
+scp "$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")"/bashdrop-server.py "${SSH_TARGET}:${REMOTE_SCRIPT}"
+ssh "${SSH_TARGET}" "chmod +w ${REMOTE_SCRIPT}"
+
+if [ -n "$BASENAME" ] && [ -n "$PASSWORD" ]; then
+  ssh -tt "$SSH_TARGET" "$REMOTE_SCRIPT $DOMAIN $PORT_OPT $BASENAME $PASSWORD"
+elif [ -n "$BASENAME" ]; then
+  ssh -tt "$SSH_TARGET" "$REMOTE_SCRIPT $DOMAIN $PORT_OPT $BASENAME"
+else
+  ssh -tt "$SSH_TARGET" "$REMOTE_SCRIPT $DOMAIN $PORT_OPT"
+fi
